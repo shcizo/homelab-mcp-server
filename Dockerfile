@@ -1,7 +1,7 @@
 # Homelab MCP Server Dockerfile
 # Provides Docker management capabilities with access to host Docker daemon
 
-FROM python:3.10-slim
+FROM python:3.14-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
