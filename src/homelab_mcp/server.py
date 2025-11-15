@@ -3,13 +3,19 @@ Homelab MCP Server
 
 This server provides tools for managing Docker containers via the Model Context Protocol.
 Claude (or other MCP clients) can use these tools to inspect and manage your homelab.
+
+Architecture:
+- Tools are automatically discovered from the tools/ directory
+- Each tool implements the BaseTool interface
+- ToolRegistry handles discovery and routing
 """
 
 import docker
-from docker.errors import DockerException
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
+
+from .tool_registry import ToolRegistry
 
 # ============================================================================
 # INITIALIZATION
@@ -24,6 +30,10 @@ server = Server("homelab-mcp-server")
 # Similar to creating a HttpClient - it's reused across requests
 docker_client = docker.from_env()
 
+# Create the tool registry
+# This automatically discovers and loads all tools from the tools/ directory
+registry = ToolRegistry(docker_client)
+
 
 # ============================================================================
 # SERVER CAPABILITIES - What can this server do?
@@ -37,39 +47,14 @@ async def list_tools() -> list[Tool]:
     In MCP, the client (Claude) first asks "what can you do?"
     This function returns the list of available tools.
 
-    It's like registering endpoints in a REST API - you're declaring
-    what operations are available and what parameters they accept.
+    The registry automatically discovers all tools, so adding a new tool
+    is as simple as creating a new file in tools/ that inherits from BaseTool.
     """
-    return [
-        Tool(
-            name="list_containers",
-            description="List all Docker containers with their status",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "all": {
-                        "type": "boolean",
-                        "description": "Show all containers (default shows just running)",
-                        "default": True
-                    }
-                },
-                "required": []  # No required parameters
-            }
-        ),
-        Tool(
-            name="ping",
-            description="Simple test tool to verify the server is working",
-            inputSchema={
-                "type": "object",
-                "properties": {},  # No parameters
-                "required": []
-            }
-        )
-    ]
+    return registry.get_tool_definitions()
 
 
 # ============================================================================
-# TOOL IMPLEMENTATIONS - What do the tools actually do?
+# TOOL EXECUTION - Route commands to the right tool
 # ============================================================================
 
 @server.call_tool()
@@ -80,63 +65,19 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     Flow:
     1. Claude calls a tool (e.g., "list_containers")
     2. MCP routes the request to this function
-    3. We check which tool was called (name parameter)
-    4. We extract the arguments and execute the logic
-    5. We return the result as TextContent
+    3. We ask the registry to find the tool that handles this command
+    4. The tool executes and returns the result
+    5. We return the result to Claude
 
-    Think of this as your controller action in C# MVC.
+    The registry uses the handles() method on each tool to determine
+    which tool should handle the command.
     """
+    # Find the tool that handles this command
+    tool = registry.find_tool(name)
 
-    if name == "ping":
-        # Simple test tool
-        return [
-            TextContent(
-                type="text",
-                text="Pong! Server is running correctly."
-            )
-        ]
-
-    elif name == "list_containers":
-        # Get the 'all' parameter, default to True if not provided
-        show_all = arguments.get("all", True)
-
-        try:
-            # Call Docker API to get containers
-            # This is similar to: docker ps (show_all=False) or docker ps -a (show_all=True)
-            containers = docker_client.containers.list(all=show_all)
-
-            # Format the output
-            if not containers:
-                result = "No containers found."
-            else:
-                # Build a nice formatted list
-                lines = ["Docker Containers:", ""]
-                for container in containers:
-                    status = container.status  # running, exited, etc.
-                    name = container.name
-                    image = container.image.tags[0] if container.image.tags else container.image.id[:12]
-
-                    # Format: ✓/✗ name (image) - status
-                    symbol = "✓" if status == "running" else "✗"
-                    lines.append(f"{symbol} {name} ({image}) - {status}")
-
-                result = "\n".join(lines)
-
-            return [
-                TextContent(
-                    type="text",
-                    text=result
-                )
-            ]
-        except DockerException as e:
-            # If Docker isn't running or there's an error, return a helpful message
-            return [
-                TextContent(
-                    type="text",
-                    text=f"Error connecting to Docker: {str(e)}"
-                )
-            ]
-
+    if tool:
+        # Execute the tool and return the result
+        return await tool.execute(arguments)
     else:
         # Unknown tool - this shouldn't happen if list_tools() is correct
         return [
