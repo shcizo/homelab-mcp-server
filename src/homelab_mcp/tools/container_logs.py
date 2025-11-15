@@ -29,7 +29,7 @@ class ContainerLogsTool(BaseTool):
         """Define the container_logs tool for MCP"""
         return Tool(
             name="container_logs",
-            description="Retrieve and display logs from a specific Docker container",
+            description="Retrieve and display logs from a specific Docker container with time filtering",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -46,6 +46,14 @@ class ContainerLogsTool(BaseTool):
                         "type": "boolean",
                         "description": "Include timestamps in log output (default: true)",
                         "default": True
+                    },
+                    "since": {
+                        "type": "string",
+                        "description": "Show logs since this time. Supports: Unix timestamp, datetime (ISO 8601), or relative time (e.g., '1h', '30m', '2d')"
+                    },
+                    "until": {
+                        "type": "string",
+                        "description": "Show logs until this time. Supports: Unix timestamp, datetime (ISO 8601), or relative time (e.g., '1h', '30m', '2d')"
                     },
                     "follow": {
                         "type": "boolean",
@@ -73,6 +81,8 @@ class ContainerLogsTool(BaseTool):
         container_name = arguments.get("container")
         tail = arguments.get("tail", 100)
         timestamps = arguments.get("timestamps", True)
+        since = arguments.get("since")
+        until = arguments.get("until")
         follow = arguments.get("follow", False)
         stdout = arguments.get("stdout", True)
         stderr = arguments.get("stderr", True)
@@ -90,17 +100,31 @@ class ContainerLogsTool(BaseTool):
             # Get the container
             container = self.docker_client.containers.get(container_name)
 
-            # Fetch logs
+            # Build logs parameters
             # Note: MCP doesn't support true streaming, so even with follow=True,
             # we're just getting a snapshot. For true streaming, you'd need to
             # run this in a background process and poll it.
-            logs = container.logs(
-                stdout=stdout,
-                stderr=stderr,
-                timestamps=timestamps,
-                tail=tail,
-                stream=False  # We don't stream in MCP
-            )
+            log_params = {
+                "stdout": stdout,
+                "stderr": stderr,
+                "timestamps": timestamps,
+                "stream": False  # We don't stream in MCP
+            }
+
+            # Add time filters if provided
+            # Docker supports: Unix timestamp, datetime string, or relative time (e.g., "1h30m")
+            if since:
+                log_params["since"] = since
+            if until:
+                log_params["until"] = until
+
+            # Only add tail if no time filters are specified
+            # (tail conflicts with since/until in some Docker versions)
+            if not since and not until:
+                log_params["tail"] = tail
+
+            # Fetch logs
+            logs = container.logs(**log_params)
 
             # Decode the logs (they come as bytes)
             log_text = logs.decode('utf-8', errors='replace')
@@ -116,7 +140,12 @@ class ContainerLogsTool(BaseTool):
                     f"Status: {container.status}"
                 ]
 
-                if tail:
+                # Add filter information
+                if since:
+                    header_parts.append(f"Since: {since}")
+                if until:
+                    header_parts.append(f"Until: {until}")
+                if not since and not until and tail:
                     header_parts.append(f"Showing last {tail} lines")
 
                 header = "\n".join(header_parts)
