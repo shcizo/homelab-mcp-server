@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "homelab": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/samuelenocsson/dev/homelab-mcp-server",
+        "python",
+        "src/homelab_mcp/server.py"
+      ]
+    }
+  }
+}
