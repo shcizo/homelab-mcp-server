@@ -1,0 +1,78 @@
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Local development files
+test_connection.py
+tests/
+*.log
+*.pid
+
+# MCP configuration
+.mcp.json
+.claude/
+
+# Issue tracking (local files)
+homelab-mcp-issues.md
+tool-test-results.md
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+temp/
+tmp/

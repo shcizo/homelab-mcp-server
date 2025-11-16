@@ -40,6 +40,71 @@ pip install -e ".[dev]"
 uv run python test_connection.py
 ```
 
+## Docker Installation (Alternative)
+
+You can run the MCP server in a Docker container instead of installing it locally. This is useful for isolation and easier deployment.
+
+### Building the Docker Image
+
+```bash
+docker build -t homelab-mcp-server .
+```
+
+### Running the Container
+
+The container requires access to the host Docker socket to manage containers:
+
+```bash
+docker run -it --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --name homelab-mcp \
+  homelab-mcp-server
+```
+
+**Important Notes:**
+- The `-v /var/run/docker.sock:/var/run/docker.sock` flag gives the container access to the host Docker daemon
+- This gives the container full control over Docker on your host system
+- On some systems, you may need to adjust Docker socket permissions or run with `--user root` for testing
+- The container runs as a non-root user (`mcp`) for security
+
+### Testing the Docker Container
+
+Test the container with a simple ping:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
+docker run -i --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  homelab-mcp-server
+```
+
+### Docker Permissions
+
+If you encounter permission errors accessing the Docker socket, you have several options:
+
+**Option 1: Run as root (temporary/testing only)**
+```bash
+docker run -i --rm --user root \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  homelab-mcp-server
+```
+
+**Option 2: Match host docker group GID**
+Find your host's docker group GID:
+```bash
+getent group docker | cut -d: -f3
+```
+
+Then rebuild with that GID:
+```bash
+docker build --build-arg DOCKER_GID=<your-gid> -t homelab-mcp-server .
+```
+
+**Option 3: Adjust socket permissions on host (not recommended)**
+```bash
+sudo chmod 666 /var/run/docker.sock
+```
+
 ## Configuration for Claude Code
 
 Add this to your Claude Code MCP configuration. You can edit it through Claude Code settings or manually:
@@ -65,6 +130,33 @@ Add this to your Claude Code MCP configuration. You can edit it through Claude C
 - `command: "uv"` - Use uv to run the server
 - `--directory` - Set working directory to your project
 - `python src/homelab_mcp/server.py` - Run the MCP server
+
+### Alternative: Using Docker
+
+If you prefer to run the server in Docker, use this configuration instead:
+
+```json
+{
+  "mcpServers": {
+    "homelab": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v", "/var/run/docker.sock:/var/run/docker.sock",
+        "homelab-mcp-server"
+      ]
+    }
+  }
+}
+```
+
+**Docker configuration notes:**
+- Requires the Docker image to be built first (`docker build -t homelab-mcp-server .`)
+- The `-i` flag enables interactive mode for stdin/stdout communication
+- The `--rm` flag removes the container after each use
+- Adjust Docker socket permissions if you encounter permission errors
 
 After adding this, restart Claude Code to load the new server.
 
