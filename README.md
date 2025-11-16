@@ -44,15 +44,52 @@ uv run python test_connection.py
 
 You can run the MCP server in a Docker container instead of installing it locally. This is useful for isolation and easier deployment.
 
-### Building the Docker Image
+### Option 1: Use Pre-built Image from GitHub Container Registry (Recommended)
+
+The easiest way to get started is to use the pre-built image from GitHub Container Registry:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/shcizo/homelab-mcp-server:latest
+
+# Run the container
+docker run -it --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  ghcr.io/shcizo/homelab-mcp-server:latest
+```
+
+**Available tags:**
+- `latest` - Latest build from main branch
+- `v1.0.0`, `v1.0`, `v1` - Semantic version tags (when released)
+- `main-<sha>` - Specific commit from main branch
+
+**For Claude Code with GHCR:**
+```json
+{
+  "mcpServers": {
+    "homelab": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "/var/run/docker.sock:/var/run/docker.sock",
+        "ghcr.io/shcizo/homelab-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+### Option 2: Build the Docker Image Locally
+
+If you want to build the image yourself:
 
 ```bash
 docker build -t homelab-mcp-server .
 ```
 
-### Running the Container
+### Running Locally Built Container
 
-The container requires access to the host Docker socket to manage containers:
+If you built the image locally, run it with:
 
 ```bash
 docker run -it --rm \
@@ -69,13 +106,13 @@ docker run -it --rm \
 
 ### Testing the Docker Container
 
-Test the container with a simple ping:
+Test the container works (use either `ghcr.io/shcizo/homelab-mcp-server:latest` or `homelab-mcp-server` for local build):
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
 docker run -i --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  homelab-mcp-server
+  ghcr.io/shcizo/homelab-mcp-server:latest
 ```
 
 ### Docker Permissions
