@@ -142,7 +142,7 @@ def main_http():
             )
 
     async def handle_messages(request):
-        await sse.handle_post_message(request.scope, request.receive, request._send)
+        return await sse.handle_post_message(request.scope, request.receive, request._send)
 
     # Create Starlette app
     app = Starlette(
