@@ -24,6 +24,11 @@ COPY src/ ./src/
 # Install Python dependencies (editable install requires source code)
 RUN uv pip install --system -e .
 
+# WORKAROUND: Fix MCP SDK initialization bug (GitHub issue #423)
+# https://github.com/modelcontextprotocol/python-sdk/issues/423
+# Replace the problematic initialization check with pass to avoid IndentationError
+RUN sed -i '172s/raise RuntimeError("Received request before initialization was complete")/pass  # PATCHED: Allow requests before init (MCP SDK issue #423)/' /usr/local/lib/python3.14/site-packages/mcp/server/session.py
+
 # Create a non-root user for running the server (security best practice)
 # Note: This user needs to be part of a group with Docker socket access
 # The GID 999 is commonly used for the docker group, but may vary by system

@@ -74,14 +74,20 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     The registry uses the handles() method on each tool to determine
     which tool should handle the command.
     """
+    import logging
+    logging.info(f"Tool call: {name} with arguments: {arguments}")
+
     # Find the tool that handles this command
     tool = registry.find_tool(name)
 
     if tool:
         # Execute the tool and return the result
-        return await tool.execute(arguments)
+        result = await tool.execute(arguments)
+        logging.info(f"Tool {name} returned: {result[:100] if result else 'None'}...")
+        return result
     else:
         # Unknown tool - this shouldn't happen if list_tools() is correct
+        logging.error(f"Unknown tool requested: {name}")
         return [
             TextContent(
                 type="text",
@@ -124,14 +130,14 @@ def main_http():
     import uvicorn
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
-    from starlette.routing import Route
+    from starlette.routing import Route, Mount
 
     # Get configuration from environment
     host = os.getenv("MCP_HOST", "0.0.0.0")
     port = int(os.getenv("MCP_PORT", "8080"))
 
-    # Create SSE transport
-    sse = SseServerTransport("/messages")
+    # Create SSE transport - use trailing slash for Mount compatibility
+    sse = SseServerTransport("/messages/")
 
     async def handle_sse(request):
         async with sse.connect_sse(
@@ -141,14 +147,12 @@ def main_http():
                 streams[0], streams[1], server.create_initialization_options()
             )
 
-    async def handle_messages(request):
-        return await sse.handle_post_message(request.scope, request.receive, request._send)
-
     # Create Starlette app
+    # Mount the handle_post_message as an ASGI app at /messages (Mount adds trailing slash)
     app = Starlette(
         routes=[
             Route("/sse", endpoint=handle_sse),
-            Route("/messages", endpoint=handle_messages, methods=["POST"]),
+            Mount("/messages", app=sse.handle_post_message),
         ]
     )
 

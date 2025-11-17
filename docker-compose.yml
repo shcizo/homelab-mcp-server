@@ -3,6 +3,7 @@ version: '3.8'
 services:
   # Remote access mode (HTTP/SSE) - recommended for homelab
   homelab-mcp:
+    build: .
     image: ghcr.io/shcizo/homelab-mcp-server:latest
     container_name: homelab-mcp
     user: root        # Required for Docker socket access
@@ -17,7 +18,7 @@ services:
       - MCP_PORT=8080
 
     ports:
-      - "8080:8080"   # Expose MCP server for remote access
+      - "9080:8080"   # Expose MCP server for remote access
 
     # Optional: Add to specific network
     # networks:
@@ -35,17 +36,18 @@ services:
 
   # Local access mode (stdio) - only for same-machine use
   # Uncomment this if you want stdio mode instead
-  # homelab-mcp-stdio:
-  #   image: ghcr.io/shcizo/homelab-mcp-server:latest
-  #   container_name: homelab-mcp-stdio
-  #   stdin_open: true  # -i flag equivalent
-  #   tty: false        # We don't need -t for MCP communication
-  #   user: root
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   restart: unless-stopped
-  #   environment:
-  #     - MCP_TRANSPORT=stdio
+  homelab-mcp-stdio:
+    build: .
+    image: ghcr.io/shcizo/homelab-mcp-server:latest
+    container_name: homelab-mcp-stdio
+    stdin_open: true  # -i flag equivalent
+    tty: false        # We don't need -t for MCP communication
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    environment:
+      - MCP_TRANSPORT=stdio
 
 # Optional: Define custom networks
 # networks:

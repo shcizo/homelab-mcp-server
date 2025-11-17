@@ -1,13 +1,20 @@
 {
   "mcpServers": {
-    "homelab": {
-      "command": "uv",
+    "homelab-remote": {
+      "url": "http://192.168.86.33:9080/sse"
+    },
+    "homelab-local-see": {
+      "url": "http://localhost:9080/sse"
+    },
+    "homelab-local": {
+      "command": "docker",
       "args": [
         "run",
-        "--directory",
-        "/Users/samuelenocsson/dev/homelab-mcp-server",
-        "python",
-        "src/homelab_mcp/server.py"
+        "--rm",
+        "-i",
+        "-v",
+        "/var/run/docker.sock:/var/run/docker.sock",
+        "ghcr.io/shcizo/homelab-mcp-server:latest"
       ]
     }
   }
