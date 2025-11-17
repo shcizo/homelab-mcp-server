@@ -98,6 +98,8 @@ docker run -it --rm \
   homelab-mcp-server
 ```
 
+**Note:** Replace `homelab-mcp-server` with `ghcr.io/shcizo/homelab-mcp-server:latest` to use the pre-built image from GHCR instead.
+
 **Important Notes:**
 - The `-v /var/run/docker.sock:/var/run/docker.sock` flag gives the container access to the host Docker daemon
 - This gives the container full control over Docker on your host system
@@ -123,10 +125,10 @@ If you encounter permission errors accessing the Docker socket, you have several
 ```bash
 docker run -i --rm --user root \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  homelab-mcp-server
+  ghcr.io/shcizo/homelab-mcp-server:latest
 ```
 
-**Option 2: Match host docker group GID**
+**Option 2: Match host docker group GID (for local builds)**
 Find your host's docker group GID:
 ```bash
 getent group docker | cut -d: -f3
@@ -141,6 +143,49 @@ docker build --build-arg DOCKER_GID=<your-gid> -t homelab-mcp-server .
 ```bash
 sudo chmod 666 /var/run/docker.sock
 ```
+
+### Option 3: Using Docker Compose
+
+For easier container management, you can use Docker Compose. A `docker-compose.yml` file is included in the repository:
+
+```yaml
+version: '3.8'
+
+services:
+  homelab-mcp:
+    image: ghcr.io/shcizo/homelab-mcp-server:latest
+    container_name: homelab-mcp
+    stdin_open: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+```
+
+**Start the service:**
+```bash
+docker-compose up -d
+```
+
+**View logs:**
+```bash
+docker-compose logs -f homelab-mcp
+```
+
+**Stop the service:**
+```bash
+docker-compose down
+```
+
+**Pull latest image and restart:**
+```bash
+docker-compose pull && docker-compose up -d
+```
+
+**Benefits of Docker Compose:**
+- Easier service management (start/stop/restart)
+- Automatic restart on failure or system reboot
+- Simple configuration file
+- Easy to add to existing compose stacks
 
 ## Configuration for Claude Code
 
@@ -168,9 +213,9 @@ Add this to your Claude Code MCP configuration. You can edit it through Claude C
 - `--directory` - Set working directory to your project
 - `python src/homelab_mcp/server.py` - Run the MCP server
 
-### Alternative: Using Docker
+### Alternative: Using Docker (Recommended)
 
-If you prefer to run the server in Docker, use this configuration instead:
+If you prefer to run the server in Docker, use this configuration:
 
 ```json
 {
@@ -182,7 +227,7 @@ If you prefer to run the server in Docker, use this configuration instead:
         "-i",
         "--rm",
         "-v", "/var/run/docker.sock:/var/run/docker.sock",
-        "homelab-mcp-server"
+        "ghcr.io/shcizo/homelab-mcp-server:latest"
       ]
     }
   }
@@ -190,10 +235,11 @@ If you prefer to run the server in Docker, use this configuration instead:
 ```
 
 **Docker configuration notes:**
-- Requires the Docker image to be built first (`docker build -t homelab-mcp-server .`)
+- Uses the pre-built image from GitHub Container Registry (no local build required)
 - The `-i` flag enables interactive mode for stdin/stdout communication
 - The `--rm` flag removes the container after each use
 - Adjust Docker socket permissions if you encounter permission errors
+- To use a locally built image, replace `ghcr.io/shcizo/homelab-mcp-server:latest` with `homelab-mcp-server`
 
 After adding this, restart Claude Code to load the new server.
 

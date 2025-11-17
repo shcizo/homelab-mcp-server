@@ -49,11 +49,18 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Docker Run Instructions:
 # ============================================================================
 #
-# To run this container with access to the host Docker daemon:
+# RECOMMENDED: Use the pre-built image from GitHub Container Registry:
 #
+# docker pull ghcr.io/shcizo/homelab-mcp-server:latest
 # docker run -it --rm \
 #   -v /var/run/docker.sock:/var/run/docker.sock \
-#   --name homelab-mcp \
+#   ghcr.io/shcizo/homelab-mcp-server:latest
+#
+# Or if you built this image locally:
+#
+# docker build -t homelab-mcp-server .
+# docker run -it --rm \
+#   -v /var/run/docker.sock:/var/run/docker.sock \
 #   homelab-mcp-server
 #
 # Important notes:
@@ -72,7 +79,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 #         "-i",
 #         "--rm",
 #         "-v", "/var/run/docker.sock:/var/run/docker.sock",
-#         "homelab-mcp-server"
+#         "ghcr.io/shcizo/homelab-mcp-server:latest"
 #       ]
 #     }
 #   }

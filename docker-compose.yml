@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  homelab-mcp:
+    image: ghcr.io/shcizo/homelab-mcp-server:latest
+    container_name: homelab-mcp
+    stdin_open: true  # -i flag equivalent
+    tty: false        # We don't need -t for MCP communication
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+    # Optional: Run as root if you have permission issues
+    # user: root
+
+    # Optional: Set custom Docker socket path
+    # environment:
+    #   - DOCKER_HOST=unix:///var/run/docker.sock
+
+    # Optional: Add to specific network
+    # networks:
+    #   - homelab
+
+    # Optional: Resource limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.25'
+    #       memory: 256M
+
+# Optional: Define custom networks
+# networks:
+#   homelab:
+#     driver: bridge
