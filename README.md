@@ -190,6 +190,62 @@ docker-compose pull && docker-compose up -d
 - Simple configuration file
 - Easy to add to existing compose stacks
 
+### Remote Access Mode (HTTP/SSE)
+
+The MCP server supports two transport modes:
+- **stdio mode** (default): For local communication - Claude Code runs the container directly
+- **HTTP/SSE mode**: For remote access - Run on homelab server, connect from anywhere
+
+**To enable remote access mode**, use the provided docker-compose.yml configuration:
+
+```bash
+# On your homelab server
+docker compose up -d
+```
+
+The docker-compose.yml is pre-configured for HTTP/SSE mode:
+```yaml
+services:
+  homelab-mcp:
+    environment:
+      - MCP_TRANSPORT=http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8080
+    ports:
+      - "8080:8080"
+```
+
+**Configure Claude Code to connect remotely:**
+
+Add this to your Claude Code MCP configuration (`~/.claude/mcp.json` or `%APPDATA%\.claude\mcp.json` on Windows):
+
+```json
+{
+  "mcpServers": {
+    "homelab": {
+      "url": "http://your-homelab-ip:8080/sse"
+    }
+  }
+}
+```
+
+Replace `your-homelab-ip` with your homelab server's IP address (e.g., `192.168.1.100`).
+
+**Verify it's running:**
+```bash
+# Check server logs
+docker logs homelab-mcp
+
+# Test endpoint
+curl -I http://localhost:8080/sse
+```
+
+**Security Considerations:**
+- The HTTP/SSE mode has no authentication by default
+- Only expose on trusted networks (your home network)
+- For internet exposure, use a reverse proxy with authentication (nginx, Caddy, Traefik)
+- Consider using a VPN (Tailscale, WireGuard) for secure remote access
+
 ## Configuration for Claude Code
 
 Add this to your Claude Code MCP configuration. You can edit it through Claude Code settings or manually:

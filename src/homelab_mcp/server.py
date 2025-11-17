@@ -8,8 +8,10 @@ Architecture:
 - Tools are automatically discovered from the tools/ directory
 - Each tool implements the BaseTool interface
 - ToolRegistry handles discovery and routing
+- Supports both stdio (local) and HTTP/SSE (remote) transports
 """
 
+import os
 import docker
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -92,14 +94,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 # SERVER ENTRY POINT
 # ============================================================================
 
-async def main():
+async def main_stdio():
     """
-    Main entry point for the server.
+    Run server in stdio mode (local communication).
 
     stdio_server means:
     - Input comes from stdin (standard input)
     - Output goes to stdout (standard output)
-    - This is how Claude communicates with the MCP server
+    - This is how Claude communicates with the MCP server locally
 
     It's like running a console app that reads from stdin and writes to stdout,
     but the messages are JSON-RPC formatted.
@@ -112,11 +114,63 @@ async def main():
         )
 
 
+def main_http():
+    """
+    Run server in HTTP/SSE mode (remote communication).
+
+    This allows remote access to the MCP server via HTTP with Server-Sent Events.
+    Useful for accessing the server from a different machine.
+    """
+    import uvicorn
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+
+    # Get configuration from environment
+    host = os.getenv("MCP_HOST", "0.0.0.0")
+    port = int(os.getenv("MCP_PORT", "8080"))
+
+    # Create SSE transport
+    sse = SseServerTransport("/messages")
+
+    async def handle_sse(request):
+        async with sse.connect_sse(
+            request.scope, request.receive, request._send
+        ) as streams:
+            await server.run(
+                streams[0], streams[1], server.create_initialization_options()
+            )
+
+    async def handle_messages(request):
+        await sse.handle_post_message(request.scope, request.receive, request._send)
+
+    # Create Starlette app
+    app = Starlette(
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+            Route("/messages", endpoint=handle_messages, methods=["POST"]),
+        ]
+    )
+
+    print(f"🚀 Homelab MCP Server starting on http://{host}:{port}")
+    print(f"📡 SSE endpoint: http://{host}:{port}/sse")
+    print(f"📨 Messages endpoint: http://{host}:{port}/messages")
+
+    # Run the server
+    uvicorn.run(app, host=host, port=port)
+
+
 # This is the standard Python entry point
-# When you run: python server.py
+# When you run: python -m homelab_mcp.server
 if __name__ == "__main__":
     import asyncio
 
-    # Run the async main function
-    # This is like Program.Main() in C#, but for async
-    asyncio.run(main())
+    # Check which mode to run in
+    mode = os.getenv("MCP_TRANSPORT", "stdio").lower()
+
+    if mode == "http" or mode == "sse":
+        # Run in HTTP/SSE mode for remote access
+        main_http()
+    else:
+        # Run in stdio mode for local access (default)
+        asyncio.run(main_stdio())

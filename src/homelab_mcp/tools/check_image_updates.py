@@ -78,6 +78,11 @@ class CheckImageUpdatesTool(BaseTool):
                         # Get local image digest
                         local_digest = image.id
 
+                        if not local_digest:
+                            errors.append(f"{tag}: Unable to retrieve local image digest")
+                            lines.append("  ✗ Error: Unable to retrieve local image digest")
+                            continue
+
                         # Try to get registry digest by pulling the image metadata
                         # This uses Docker's registry API to check without downloading
                         lines.append(f"Checking: {tag}")
@@ -88,14 +93,14 @@ class CheckImageUpdatesTool(BaseTool):
                             registry_image = self.docker_client.images.get_registry_data(tag)
 
                             # Compare digests
-                            if registry_image.id != local_digest:
+                            if registry_image.id and registry_image.id != local_digest:
                                 updates_available.append({
                                     'tag': tag,
                                     'local': local_digest[:12],
                                     'registry': registry_image.id[:12],
                                     'status': 'UPDATE AVAILABLE'
                                 })
-                                lines.append(f"  ⚠️  Update available!")
+                                lines.append("  ⚠️  Update   available!")
                             else:
                                 up_to_date.append(tag)
                                 lines.append(f"  ✓ Up to date")
@@ -104,10 +109,10 @@ class CheckImageUpdatesTool(BaseTool):
                             # Image might not be in a public registry or auth required
                             if "404" in str(e) or "not found" in str(e).lower():
                                 errors.append(f"{tag}: Not found in registry (might be local-only or private)")
-                                lines.append(f"  ⚠️  Not found in registry")
+                                lines.append("  ⚠️  Not found in registry")
                             elif "unauthorized" in str(e).lower() or "authentication" in str(e).lower():
                                 errors.append(f"{tag}: Authentication required")
-                                lines.append(f"  ⚠️  Authentication required")
+                                lines.append(f"  ⚠️  Authentication required")  # noqa: F541
                             else:
                                 errors.append(f"{tag}: {str(e)}")
                                 lines.append(f"  ✗ Error: {str(e)}")
