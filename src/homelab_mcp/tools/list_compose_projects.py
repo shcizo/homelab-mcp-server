@@ -5,6 +5,7 @@ Discover and list all Docker Compose projects on the server.
 """
 
 from collections import defaultdict
+from pathlib import Path
 from docker.errors import DockerException
 from ..base_tool import BaseTool
 from mcp.types import Tool, TextContent
@@ -96,18 +97,48 @@ class ListComposeProjectsTool(BaseTool):
                     status_icon = "⚠"
                     status_text = f"{running_count}/{total_count} running"
 
-                lines.append(f"{status_icon} Project: {project_name}")
+                # Check if paths exist
+                working_dir = services[0]['working_dir']
+                config_files = services[0]['config_files']
+
+                dir_exists = working_dir != 'N/A' and Path(working_dir).exists()
+                file_exists = False
+                if config_files != 'N/A':
+                    # config_files might be comma-separated list, check first one
+                    main_config = config_files.split(',')[0].strip()
+                    config_path = Path(main_config)
+                    if not config_path.is_absolute() and working_dir != 'N/A':
+                        config_path = Path(working_dir) / main_config
+                    file_exists = config_path.exists()
+
+                # Mark as stale if paths don't exist
+                is_stale = working_dir != 'N/A' and not (dir_exists and file_exists)
+
+                if is_stale:
+                    lines.append(f"⚠️  Project: {project_name} (STALE)")
+                else:
+                    lines.append(f"{status_icon} Project: {project_name}")
+
                 lines.append(f"  Status: {status_text}")
 
                 # Get location from first service (all should have same working_dir)
-                working_dir = services[0]['working_dir']
                 if working_dir != 'N/A':
-                    lines.append(f"  Location: {working_dir}")
+                    if dir_exists:
+                        lines.append(f"  Location: {working_dir}")
+                    else:
+                        lines.append(f"  Location: {working_dir} ⚠️  (NOT FOUND)")
 
                 # Get config files from first service
-                config_files = services[0]['config_files']
                 if config_files != 'N/A':
-                    lines.append(f"  Config: {config_files}")
+                    if file_exists:
+                        lines.append(f"  Config: {config_files}")
+                    else:
+                        lines.append(f"  Config: {config_files} ⚠️  (NOT FOUND)")
+
+                # Add warning if stale
+                if is_stale:
+                    lines.append(f"  ⚠️  Warning: Compose files missing - operations may fail")
+                    lines.append(f"  💡 Tip: Use direct container operations instead of compose operations")
 
                 # List services
                 lines.append(f"  Services ({len(services)}):")

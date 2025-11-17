@@ -86,10 +86,27 @@ class ComposeRebuildTool(BaseTool):
             # Verify path exists
             compose_dir = Path(compose_path)
             if not compose_dir.exists():
-                return [TextContent(
-                    type="text",
-                    text=f"Error: Directory not found: {compose_path}"
-                )]
+                error_msg = [
+                    "❌ Compose project directory not found",
+                    "",
+                    f"The project '{project_name or 'unknown'}' was created from this location:",
+                    f"  {compose_path}",
+                    "",
+                    "However, this directory no longer exists. This typically happens when:",
+                    "  • The compose file was moved or deleted after container creation",
+                    "  • The container was created from a different filesystem/mount",
+                    "  • The project directory was renamed",
+                    "",
+                    "The containers are still running and can be managed directly, but",
+                    "compose-based operations require the original compose file.",
+                    "",
+                    "💡 Suggestions:",
+                    "  • Use direct container operations instead (container_control, etc.)",
+                    "  • Use 'list_compose_projects' to see which projects have missing files",
+                    "  • If you know where the compose file is now, use the 'path' parameter",
+                    "  • Recreate the project if the compose file is available elsewhere"
+                ]
+                return [TextContent(type="text", text="\n".join(error_msg))]
 
             # Check for compose file
             compose_file = None
