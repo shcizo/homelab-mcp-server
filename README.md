@@ -156,10 +156,13 @@ services:
     image: ghcr.io/shcizo/homelab-mcp-server:latest
     container_name: homelab-mcp
     stdin_open: true
+    user: root  # Required for Docker socket access
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 ```
+
+**Note:** The container runs as `root` to ensure access to the Docker socket. This is necessary because the Docker socket typically requires root or docker group permissions on the host.
 
 **Start the service:**
 ```bash
