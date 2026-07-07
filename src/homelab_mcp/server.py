@@ -130,6 +130,7 @@ def main_http():
     import uvicorn
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
+    from starlette.responses import Response
     from starlette.routing import Route, Mount
 
     # Get configuration from environment
@@ -146,6 +147,7 @@ def main_http():
             await server.run(
                 streams[0], streams[1], server.create_initialization_options()
             )
+        return Response()
 
     # Create Starlette app
     # Mount the handle_post_message as an ASGI app at /messages (Mount adds trailing slash)
